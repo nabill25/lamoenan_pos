@@ -53,11 +53,17 @@ function VariantManager({ item, onClose }: { item: MenuItem; onClose: () => void
 
     const fetchGroups = async () => {
         setLoading(true);
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('menu_variants')
             .select('*')
             .eq('menu_item_id', item.id)
             .order('created_at');
+        if (error) {
+            console.error('fetchGroups error:', error);
+            if (error.code === '42P01') {
+                alert('❌ Tabel menu_variants belum ada!\n\nJalankan dulu SQL Migration di Supabase:\n1. Buka supabase.com → SQL Editor\n2. Copy isi file supabase_migration_v2.sql\n3. Paste & klik Run');
+            }
+        }
         setGroups((data as any) || []);
         setLoading(false);
     };
@@ -66,12 +72,17 @@ function VariantManager({ item, onClose }: { item: MenuItem; onClose: () => void
     const addGroup = async () => {
         if (!newGroupName.trim()) return;
         setSaving(true);
-        await supabase.from('menu_variants').insert({
+        const { error } = await supabase.from('menu_variants').insert({
             menu_item_id: item.id,
             group_name: newGroupName.trim(),
             options: [],
             is_required: newGroupRequired,
         });
+        if (error) {
+            alert('❌ Gagal menyimpan varian: ' + error.message + '\n\nKemungkinan SQL migration belum dijalankan di Supabase!');
+            setSaving(false);
+            return;
+        }
         setNewGroupName('');
         setNewGroupRequired(false);
         await fetchGroups();
@@ -97,7 +108,8 @@ function VariantManager({ item, onClose }: { item: MenuItem; onClose: () => void
         if (!label) return;
         const price = newOptionPrice[group.id] || 0;
         const updatedOptions = [...group.options, { label, price_adj: price }];
-        await supabase.from('menu_variants').update({ options: updatedOptions }).eq('id', group.id);
+        const { error } = await supabase.from('menu_variants').update({ options: updatedOptions }).eq('id', group.id);
+        if (error) { alert('❌ Gagal: ' + error.message); return; }
         setNewOptionLabel(p => ({ ...p, [group.id]: '' }));
         setNewOptionPrice(p => ({ ...p, [group.id]: 0 }));
         setGroups(gs => gs.map(g => g.id === group.id ? { ...g, options: updatedOptions } : g));
