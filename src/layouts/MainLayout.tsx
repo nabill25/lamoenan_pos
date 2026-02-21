@@ -27,6 +27,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
 
   useEffect(() => {
@@ -63,7 +64,9 @@ export default function MainLayout() {
   ];
 
   const visibleNav = navItems.filter(item => role && (item.roles as string[]).includes(role));
-  const bottomNavItems = visibleNav.slice(0, 5);
+  const bottomNavItems = visibleNav.slice(0, 4); // 4 utama
+  const moreNavItems = visibleNav.slice(4);       // sisanya di drawer
+
 
   return (
     <div className="flex h-[100dvh] bg-gray-50">
@@ -168,6 +171,7 @@ export default function MainLayout() {
             key={item.to}
             to={item.to}
             end={item.exact}
+            onClick={() => setShowMoreMenu(false)}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors ${isActive ? 'text-amber-400' : 'text-slate-500'}`
             }
@@ -176,7 +180,52 @@ export default function MainLayout() {
             <span>{item.label}</span>
           </NavLink>
         ))}
+        {/* Tombol Lainnya — selalu tampil jika ada item lebih dari 4 */}
+        {moreNavItems.length > 0 && (
+          <button
+            onClick={() => setShowMoreMenu(v => !v)}
+            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors ${showMoreMenu ? 'text-amber-400' : 'text-slate-500'
+              }`}
+          >
+            <Grid2x2 size={20} />
+            <span>Lainnya</span>
+          </button>
+        )}
       </nav>
+
+      {/* ===== DRAWER LAINNYA — mobile ===== */}
+      {showMoreMenu && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="md:hidden fixed inset-0 z-20 bg-black/40"
+            onClick={() => setShowMoreMenu(false)}
+          />
+          {/* Drawer */}
+          <div className="md:hidden fixed bottom-16 left-0 right-0 z-20 bg-slate-900 border-t border-slate-700 p-4">
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3 text-center">Menu Lainnya</p>
+            <div className="grid grid-cols-4 gap-2">
+              {moreNavItems.map(item => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.exact}
+                  onClick={() => setShowMoreMenu(false)}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${isActive
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    }`
+                  }
+                >
+                  {item.icon}
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ===== SHIFT MODAL ===== */}
       {showShiftModal && (
