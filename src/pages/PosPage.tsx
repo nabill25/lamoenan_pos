@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useCartStore } from '../store/cartStore';
-import { Search, Plus, Minus, CreditCard, Loader2, QrCode, X, Banknote, Printer, UserPlus } from 'lucide-react';
+import { Search, Plus, Minus, Loader2, QrCode, X, Banknote, Printer, UserPlus } from 'lucide-react';
 import { Receipt } from '../components/Receipt';
 import { useReactToPrint } from 'react-to-print';
 
@@ -64,7 +64,7 @@ export default function PosPage() {
   const searchMember = async () => {
     if (!memberPhone) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('members')
       .select('*')
       .eq('phone', memberPhone)

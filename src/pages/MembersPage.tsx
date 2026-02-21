@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { UserPlus, Search, Phone, User, Trash2, Loader2 } from 'lucide-react';
+import { UserPlus, Search, Phone, Trash2, Loader2 } from 'lucide-react';
+
 
 interface Member {
   id: string;
@@ -14,7 +15,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  
+
   // State untuk Form Tambah Member
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -38,7 +39,7 @@ export default function MembersPage() {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAdding(true);
-    
+
     const { data, error } = await supabase
       .from('members')
       .insert([{ name: newName, phone: newPhone }])
@@ -55,8 +56,8 @@ export default function MembersPage() {
     setIsAdding(false);
   };
 
-  const filteredMembers = members.filter(m => 
-    m.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredMembers = members.filter(m =>
+    m.name.toLowerCase().includes(search.toLowerCase()) ||
     m.phone.includes(search)
   );
 
@@ -79,8 +80,8 @@ export default function MembersPage() {
           <form onSubmit={handleAddMember} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Lengkap</label>
-              <input 
-                type="text" required 
+              <input
+                type="text" required
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 value={newName} onChange={(e) => setNewName(e.target.value)}
                 placeholder="Contoh: Andi Wijaya"
@@ -88,14 +89,14 @@ export default function MembersPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nomor WhatsApp</label>
-              <input 
-                type="text" required 
+              <input
+                type="text" required
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
                 placeholder="0812..."
               />
             </div>
-            <button 
+            <button
               disabled={isAdding}
               className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold hover:bg-slate-800 transition disabled:opacity-50"
             >
@@ -109,9 +110,9 @@ export default function MembersPage() {
           <div className="p-4 border-b border-gray-100">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Cari nama atau nomor HP..." 
+              <input
+                type="text"
+                placeholder="Cari nama atau nomor HP..."
                 className="w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
                 value={search} onChange={(e) => setSearch(e.target.value)}
               />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Users, ShieldCheck, UserCog, Loader2, Mail, Trash2 } from 'lucide-react';
+import { ShieldCheck, UserCog, Loader2, Mail, Trash2 } from 'lucide-react';
+
 
 interface StaffMember {
   id: string;
@@ -55,7 +56,7 @@ export default function UsersPage() {
         // menghapus dari 'profiles' akan membersihkan data terkait.
         const { error } = await supabase.from('profiles').delete().eq('id', userId);
         if (error) throw error;
-        
+
         setStaff(staff.filter(s => s.id !== userId));
         alert('Staff berhasil dihapus dari sistem.');
       } catch (err: any) {
@@ -71,7 +72,7 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Manajemen Staff</h1>
           <p className="text-gray-500">Kelola anggota tim Lamoenan Cafe & Bistro.</p>
         </div>
-        <button 
+        <button
           onClick={fetchStaff}
           className="text-sm bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition shadow-sm"
         >
@@ -95,7 +96,7 @@ export default function UsersPage() {
             <div className="p-12 text-center text-gray-400 font-medium">Belum ada staff terdaftar.</div>
           ) : staff.map((member) => (
             <div key={member.id} className="grid grid-cols-5 p-4 items-center hover:bg-gray-50 transition-colors">
-              
+
               <div className="col-span-2 flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">
                   {member.email[0].toUpperCase()}
@@ -105,8 +106,8 @@ export default function UsersPage() {
                     {member.email}
                     {member.user_roles?.role === 'owner' && (
                       <span title="Owner Access">
-  <ShieldCheck size={14} className="text-amber-600" />
-</span>
+                        <ShieldCheck size={14} className="text-amber-600" />
+                      </span>
                     )}
                   </div>
                   <div className="text-[10px] text-gray-400 flex items-center gap-1">
@@ -116,17 +117,16 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                  member.user_roles?.role === 'owner' ? 'bg-amber-100 text-amber-700' :
-                  member.user_roles?.role === 'headbar' ? 'bg-blue-100 text-blue-700' :
-                  'bg-slate-100 text-slate-700'
-                }`}>
+                <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${member.user_roles?.role === 'owner' ? 'bg-amber-100 text-amber-700' :
+                    member.user_roles?.role === 'headbar' ? 'bg-blue-100 text-blue-700' :
+                      'bg-slate-100 text-slate-700'
+                  }`}>
                   {member.user_roles?.role || 'Tanpa Jabatan'}
                 </span>
               </div>
 
               <div className="col-span-2 flex justify-end gap-3 items-center">
-                <select 
+                <select
                   className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                   value={member.user_roles?.role || ''}
                   disabled={updatingId === member.id}
@@ -137,8 +137,8 @@ export default function UsersPage() {
                   <option value="headbar">Headbar</option>
                   <option value="barista">Barista</option>
                 </select>
-                
-                <button 
+
+                <button
                   onClick={() => deleteStaff(member.id, member.email)}
                   className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                   title="Hapus Staff"

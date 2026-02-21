@@ -2,13 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Search, AlertCircle, CheckCircle2, XCircle, TrendingDown, UtensilsCrossed, RefreshCw } from 'lucide-react';
 
-// Tipe data mentah dari Supabase
-interface MenuItemRaw {
-  id: string;
-  name: string;
-  stock_quantity: number; // stok manual (dipakai jika tidak ada resep)
-  categories: { name: string } | null;
-}
 
 interface ResepRaw {
   menu_item_id: string;

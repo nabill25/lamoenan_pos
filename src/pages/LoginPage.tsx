@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Coffee } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -26,7 +25,7 @@ export default function LoginPage() {
           password,
         });
         if (signUpError) throw signUpError;
-        
+
         setSuccessMsg("Akun berhasil dibuat! Silakan login.");
         setIsRegister(false); // Pindah ke mode login otomatis
       } else {
@@ -50,25 +49,25 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 border border-gray-100">
-        
+
         {/* Header Logo */}
         {/* Header Logo & Brand */}
-<div className="flex flex-col items-center mb-8">
-  <div className="w-28 h-28 mb-4 flex items-center justify-center">
-    <img 
-      src="/logo.png" 
-      alt="Lamoenan Logo" 
-      className="w-full h-full object-contain"
-    />
-  </div>
-  <div className="text-center">
-    <h2 className="text-2xl font-black text-gray-900 leading-none">LAMOENAN CAFE</h2>
-    <p className="text-xs text-amber-700 font-bold tracking-[0.3em] mt-1 uppercase">
-      & Bistro
-    </p>
-    <p className="text-gray-400 text-sm mt-4 font-medium">Sign in to your account</p>
-  </div>
-</div>
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-28 h-28 mb-4 flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="Lamoenan Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="text-center">
+            <h2 className="text-2xl font-black text-gray-900 leading-none">LAMOENAN CAFE</h2>
+            <p className="text-xs text-amber-700 font-bold tracking-[0.3em] mt-1 uppercase">
+              & Bistro
+            </p>
+            <p className="text-gray-400 text-sm mt-4 font-medium">Sign in to your account</p>
+          </div>
+        </div>
 
         {/* Alert Error / Success */}
         {error && (
@@ -120,12 +119,12 @@ export default function LoginPage() {
         {/* Footer Link (Switch Mode) */}
         <div className="mt-6 text-center text-sm text-gray-600">
           {isRegister ? 'Already have an account? ' : "Don't have an account? "}
-          <button 
+          <button
             onClick={() => {
               setIsRegister(!isRegister);
               setError(null);
               setSuccessMsg(null);
-            }} 
+            }}
             className="text-amber-700 font-semibold hover:underline"
           >
             {isRegister ? 'Sign in' : 'Sign up'}
