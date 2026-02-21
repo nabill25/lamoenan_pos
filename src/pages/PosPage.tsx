@@ -213,7 +213,7 @@ export default function PosPage() {
   );
 
   return (
-    <div className="flex h-[100dvh] md:h-[calc(100vh-2rem)] gap-4 relative md:p-4">
+    <div className="flex flex-col md:flex-row h-full gap-0 md:gap-4 md:p-4 md:h-[calc(100vh-2rem)]">
 
       {/* Struk off-screen */}
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
@@ -284,7 +284,7 @@ export default function PosPage() {
 
       {/* ===== FLOATING CART BUTTON (mobile only) ===== */}
       <button
-        className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-full shadow-xl flex items-center gap-2.5 font-bold text-sm active:scale-95 transition-transform"
+        className="md:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-full shadow-xl flex items-center gap-2.5 font-bold text-sm active:scale-95 transition-transform"
         onClick={() => setShowCartMobile(true)}
       >
         <ShoppingCart size={18} />

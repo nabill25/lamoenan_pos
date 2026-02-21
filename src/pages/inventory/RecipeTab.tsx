@@ -170,8 +170,8 @@ export default function RecipeTab() {
                             <span className="text-xs text-gray-400">{resep.length} bahan</span>
                         </div>
 
-                        {/* Tabel resep */}
-                        <table className="w-full text-sm">
+                        {/* Tabel resep — desktop */}
+                        <table className="hidden md:table w-full text-sm">
                             <thead className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
                                 <tr>
                                     <th className="px-5 py-3 text-left">Bahan Baku</th>
@@ -190,46 +190,68 @@ export default function RecipeTab() {
                                             <p className="text-xs mt-1">Tambahkan bahan di bawah.</p>
                                         </td>
                                     </tr>
-                                ) : (
-                                    resep.map(r => (
-                                        <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-5 py-3 font-medium text-gray-900">
-                                                {r.ingredients.name}
-                                                <span className="text-gray-400 font-normal ml-1 text-xs">({r.ingredients.unit})</span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${r.ingredients.current_stock <= 5
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'bg-green-100 text-green-700'
-                                                    }`}>
-                                                    {r.ingredients.current_stock} {r.ingredients.unit}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <input
-                                                    type="number"
-                                                    min={0.1}
-                                                    step={0.1}
-                                                    className="w-20 text-right border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                                    defaultValue={r.quantity}
-                                                    onBlur={e => updateQty(r.id, parseFloat(e.target.value) || 0)}
-                                                />
-                                                <span className="text-gray-400 text-xs ml-1">{r.ingredients.unit}</span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <button
-                                                    onClick={() => hapusBahan(r.id)}
-                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                                    title="Hapus dari resep"
-                                                >
-                                                    <Trash2 size={15} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
+                                ) : resep.map(r => (
+                                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-5 py-3 font-medium text-gray-900">
+                                            {r.ingredients.name}
+                                            <span className="text-gray-400 font-normal ml-1 text-xs">({r.ingredients.unit})</span>
+                                        </td>
+                                        <td className="px-5 py-3 text-right">
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${r.ingredients.current_stock <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                {r.ingredients.current_stock} {r.ingredients.unit}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3 text-right">
+                                            <input type="number" min={0.1} step={0.1}
+                                                className="w-20 text-right border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                                defaultValue={r.quantity}
+                                                onBlur={e => updateQty(r.id, parseFloat(e.target.value) || 0)}
+                                            />
+                                            <span className="text-gray-400 text-xs ml-1">{r.ingredients.unit}</span>
+                                        </td>
+                                        <td className="px-5 py-3 text-right">
+                                            <button onClick={() => hapusBahan(r.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Hapus dari resep">
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
+
+                        {/* Card list resep — mobile */}
+                        <div className="md:hidden divide-y divide-gray-100">
+                            {loading ? (
+                                <div className="py-8 text-center text-gray-400">Memuat resep...</div>
+                            ) : resep.length === 0 ? (
+                                <div className="py-10 text-center text-gray-400">
+                                    <p className="font-medium">Belum ada bahan dalam resep ini.</p>
+                                    <p className="text-xs mt-1">Tambahkan bahan di bawah.</p>
+                                </div>
+                            ) : resep.map(r => (
+                                <div key={r.id} className="px-4 py-3 flex items-center gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm text-gray-900">{r.ingredients.name}</div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${r.ingredients.current_stock <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                stok: {r.ingredients.current_stock} {r.ingredients.unit}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <input type="number" min={0.1} step={0.1}
+                                            className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                            defaultValue={r.quantity}
+                                            onBlur={e => updateQty(r.id, parseFloat(e.target.value) || 0)}
+                                        />
+                                        <span className="text-gray-400 text-xs">{r.ingredients.unit}</span>
+                                        <button onClick={() => hapusBahan(r.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors">
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Form tambah bahan ke resep */}
