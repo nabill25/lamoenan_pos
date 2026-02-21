@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useCartStore } from '../store/cartStore';
-import { Search, Plus, Minus, Loader2, QrCode, X, Banknote, Printer, UserPlus, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Search, Plus, Minus, Loader2, QrCode, X, Banknote, Printer, UserPlus, ShoppingCart, ChevronDown, MapPin, ChevronUp } from 'lucide-react';
 import { Receipt } from '../components/Receipt';
 import { useReactToPrint } from 'react-to-print';
+import VariantModal, { VariantGroup, SelectedVariant } from '../components/VariantModal';
 
 interface MenuItem {
   id: string;
@@ -12,6 +13,13 @@ interface MenuItem {
   cost: number;
   image_url: string;
   categories: { name: string } | null;
+}
+
+interface Table {
+  id: string;
+  name: string;
+  capacity: number;
+  status: string;
 }
 
 export default function PosPage() {
@@ -25,6 +33,16 @@ export default function PosPage() {
   const [memberPhone, setMemberPhone] = useState('');
   const [receiptData, setReceiptData] = useState<any>(null);
   const [showCartMobile, setShowCartMobile] = useState(false);
+
+  // State Varian
+  const [variantItem, setVariantItem] = useState<MenuItem | null>(null);
+  const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+
+  // State Meja
+  const [tables, setTables] = useState<Table[]>([]);
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const [showTablePicker, setShowTablePicker] = useState(false);
 
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +60,10 @@ export default function PosPage() {
     onAfterPrint: () => setReceiptData(null)
   });
 
-  useEffect(() => { fetchMenu(); }, []);
+  useEffect(() => {
+    fetchMenu();
+    fetchTables();
+  }, []);
 
   const fetchMenu = async () => {
     const { data } = await supabase
@@ -51,6 +72,40 @@ export default function PosPage() {
       .order('name');
     setMenuItems(data as any || []);
     setLoading(false);
+  };
+
+  const fetchTables = async () => {
+    const { data } = await supabase.from('tables').select('*').order('name');
+    setTables((data as any) || []);
+  };
+
+  // Klik item → cek varian dulu
+  const handleItemClick = async (item: MenuItem) => {
+    setLoadingVariants(true);
+    setVariantItem(item);
+    const { data } = await supabase
+      .from('menu_variants')
+      .select('*')
+      .eq('menu_item_id', item.id);
+    setVariantGroups((data || []) as VariantGroup[]);
+    setLoadingVariants(false);
+  };
+
+  // Konfirmasi dari VariantModal → tambah ke keranjang
+  const handleVariantConfirm = (selections: SelectedVariant[], qty: number, notes: string) => {
+    if (!variantItem) return;
+    const variantAdj = selections.reduce((sum, s) => sum + s.price, 0);
+    const variantLabel = selections.map(s => s.label).join(' · ');
+    addToCart({
+      id: variantItem.id,
+      name: variantItem.name + (variantLabel ? ` (${variantLabel})` : ''),
+      price: variantItem.base_price + variantAdj,
+      cost: variantItem.cost || 0,
+      quantity: qty,
+      addons: notes ? [{ name: notes, price: 0 }] : [],
+      variant: variantLabel ? { name: variantLabel, price: variantAdj } : undefined,
+    });
+    setVariantItem(null);
   };
 
   const searchMember = async () => {
@@ -86,7 +141,15 @@ export default function PosPage() {
     try {
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert({ total_amount: totals.total, discount_amount: totals.discountAmount, member_id: selectedMember?.id, payment_type: method, status: 'completed' })
+        .insert({
+          total_amount: totals.total,
+          discount_amount: totals.discountAmount,
+          member_id: selectedMember?.id,
+          payment_type: method,
+          status: 'completed',
+          table_id: selectedTable?.id || null,
+          table_name: selectedTable?.name || 'Take Away',
+        })
         .select().single();
 
       if (orderError || !orderData) throw new Error('Gagal order');
@@ -95,6 +158,11 @@ export default function PosPage() {
         order_id: orderData.id, menu_item_id: item.id,
         name: item.name, price: item.price, cost: item.cost, quantity: item.quantity
       })));
+
+      // Tandai meja sebagai occupied
+      if (selectedTable) {
+        await supabase.from('tables').update({ status: 'occupied' }).eq('id', selectedTable.id);
+      }
 
       // Auto-deduct stok bahan baku
       try {
@@ -116,16 +184,25 @@ export default function PosPage() {
           await Promise.all(Object.entries(pemakaianBahan).map(async ([ingId, info]) => {
             const stokBaru = Math.max(0, info.stokSekarang - info.total);
             await supabase.from('ingredients').update({ current_stock: stokBaru }).eq('id', ingId);
-            await supabase.from('stock_movements').insert({ ingredient_id: ingId, type: 'out', quantity: info.total, notes: `Penjualan Order #${orderData.id.slice(0, 8)}` });
+            await supabase.from('stock_movements').insert({ ingredient_id: ingId, type: 'out', quantity: info.total, notes: `Penjualan #${orderData.id.slice(0, 8)}` });
           }));
         }
       } catch (e) { console.error('Auto-deduct gagal:', e); }
 
-      setReceiptData({ id: orderData.id, date: new Date().toLocaleString('id-ID'), items: [...items], total: totals.total, discount: totals.discountAmount, paymentMethod: method, cashierName: 'Admin', memberName: selectedMember?.name });
+      setReceiptData({
+        id: orderData.id, date: new Date().toLocaleString('id-ID'),
+        items: [...items], total: totals.total, discount: totals.discountAmount,
+        paymentMethod: method, cashierName: 'Admin',
+        memberName: selectedMember?.name, tableName: selectedTable?.name || 'Take Away'
+      });
+
       setShowQrisModal(false);
       setShowCartMobile(false);
       clearCart();
       setMemberPhone('');
+      setSelectedTable(null);
+      fetchTables(); // refresh status meja
+
       if (confirm('Transaksi Berhasil! Apakah ingin mencetak struk?')) setTimeout(() => handlePrint(), 300);
 
     } catch (error: any) {
@@ -144,11 +221,14 @@ export default function PosPage() {
   // @ts-ignore
   const categories = ['All', ...new Set(menuItems.map(i => i.categories?.name).filter(Boolean))];
 
-  // ─── Komponen CartContent  (dipakai di desktop sidebar & mobile sheet) ───
+  // ─── Komponen CartContent ───
   const CartContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b flex justify-between items-center shrink-0">
-        <h2 className="font-bold text-lg">Current Order</h2>
+        <h2 className="font-bold text-lg">
+          Current Order
+          {selectedTable && <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{selectedTable.name}</span>}
+        </h2>
         <button className="md:hidden p-1 text-gray-400" onClick={() => setShowCartMobile(false)}>
           <ChevronDown size={22} />
         </button>
@@ -163,7 +243,8 @@ export default function PosPage() {
         ) : items.map(item => (
           <div key={item.tempId} className="flex gap-3">
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm truncate">{item.name}</h4>
+              <h4 className="font-medium text-sm leading-tight">{item.name}</h4>
+              {item.addons?.[0]?.name && <p className="text-xs text-gray-400 italic mt-0.5">📝 {item.addons[0].name}</p>}
               <p className="text-xs text-gray-500">Rp {item.price.toLocaleString('id-ID')}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -220,6 +301,24 @@ export default function PosPage() {
         <Receipt ref={receiptRef} orderData={receiptData} />
       </div>
 
+      {/* Modal Varian */}
+      {variantItem && !loadingVariants && (
+        <VariantModal
+          item={variantItem}
+          variants={variantGroups}
+          onConfirm={handleVariantConfirm}
+          onClose={() => setVariantItem(null)}
+        />
+      )}
+      {loadingVariants && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl p-5 flex items-center gap-3 shadow-xl">
+            <Loader2 className="animate-spin text-amber-500" size={20} />
+            <span className="text-sm font-medium">Memuat varian...</span>
+          </div>
+        </div>
+      )}
+
       {/* Modal QRIS */}
       {showQrisModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -241,6 +340,7 @@ export default function PosPage() {
 
       {/* ===== GRID MENU ===== */}
       <div className="flex-1 flex flex-col bg-white md:rounded-xl shadow-sm overflow-hidden">
+        {/* Search + kategori */}
         <div className="p-3 border-b border-gray-100">
           <div className="relative mb-2.5">
             <Search className="absolute left-3 top-2.5 text-gray-400" size={17} />
@@ -253,13 +353,55 @@ export default function PosPage() {
           </div>
         </div>
 
+        {/* Pemilih meja — tampil di atas grid menu */}
+        <div className="px-3 py-2 border-b bg-gray-50/50">
+          <button
+            onClick={() => setShowTablePicker(p => !p)}
+            className="flex items-center gap-2 text-xs font-medium text-gray-600 hover:text-gray-900"
+          >
+            <MapPin size={14} className="text-amber-500" />
+            <span>{selectedTable ? selectedTable.name : 'Take Away'}</span>
+            {showTablePicker ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {showTablePicker && (
+            <div className="mt-2 grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+              <button
+                onClick={() => { setSelectedTable(null); setShowTablePicker(false); }}
+                className={`py-1.5 rounded-lg border text-[10px] font-bold text-center ${!selectedTable ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-gray-200 text-gray-600'}`}
+              >
+                Take Away
+              </button>
+              {tables.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { setSelectedTable(t); setShowTablePicker(false); }}
+                  disabled={t.status === 'occupied' && t.id !== selectedTable?.id}
+                  className={`py-1.5 rounded-lg border text-[10px] font-bold text-center ${selectedTable?.id === t.id
+                    ? 'border-amber-500 bg-amber-50 text-amber-800'
+                    : t.status === 'occupied'
+                      ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed'
+                      : 'border-gray-200 text-gray-600'
+                    }`}
+                >
+                  {t.name.replace('Meja ', '')}
+                  <div className={`text-[8px] ${t.status === 'occupied' ? 'text-red-400' : 'text-green-500'}`}>
+                    {t.status === 'occupied' ? 'Sibuk' : 'Kosong'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Grid menu */}
         <div className="flex-1 overflow-y-auto p-3 bg-gray-50 pb-24 md:pb-4">
           {loading
             ? <div className="flex justify-center h-40 items-center"><Loader2 className="animate-spin" /></div>
             : <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredItems.map(item => (
                 <div key={item.id}
-                  onClick={() => addToCart({ id: item.id, name: item.name, price: item.base_price, cost: item.cost || 0, quantity: 1, addons: [] })}
+                  onClick={() => handleItemClick(item)}
                   className="bg-white rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all overflow-hidden group border border-gray-100 active:scale-95"
                 >
                   <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -282,7 +424,7 @@ export default function PosPage() {
         <CartContent />
       </div>
 
-      {/* ===== FLOATING CART BUTTON (mobile only) ===== */}
+      {/* ===== FLOATING CART BUTTON (mobile) ===== */}
       <button
         className="md:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-full shadow-xl flex items-center gap-2.5 font-bold text-sm active:scale-95 transition-transform"
         onClick={() => setShowCartMobile(true)}
