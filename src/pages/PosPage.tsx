@@ -7,6 +7,7 @@ import { useReactToPrint } from 'react-to-print';
 import VariantModal from '../components/VariantModal';
 import type { VariantGroup, SelectedVariant } from '../components/VariantModal';
 
+
 interface MenuItem {
   id: string;
   name: string;
@@ -14,7 +15,9 @@ interface MenuItem {
   cost: number;
   image_url: string;
   categories: { name: string } | null;
+  variants: VariantGroup[];
 }
+
 
 interface Table {
   id: string;
@@ -35,10 +38,10 @@ export default function PosPage() {
   const [receiptData, setReceiptData] = useState<any>(null);
   const [showCartMobile, setShowCartMobile] = useState(false);
 
-  // State Varian
+  // State Varian — langsung dari item.variants (tidak perlu query tambahan)
   const [variantItem, setVariantItem] = useState<MenuItem | null>(null);
   const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
-  const [loadingVariants, setLoadingVariants] = useState(false);
+
 
   // State Meja
   const [tables, setTables] = useState<Table[]>([]);
@@ -69,28 +72,24 @@ export default function PosPage() {
   const fetchMenu = async () => {
     const { data } = await supabase
       .from('menu_items')
-      .select('id, name, base_price, cost, image_url, categories(name)')
+      .select('id, name, base_price, cost, image_url, variants, categories(name)')
       .order('name');
     setMenuItems(data as any || []);
     setLoading(false);
   };
+
 
   const fetchTables = async () => {
     const { data } = await supabase.from('tables').select('*').order('name');
     setTables((data as any) || []);
   };
 
-  // Klik item → cek varian dulu
-  const handleItemClick = async (item: MenuItem) => {
-    setLoadingVariants(true);
+  // Klik item → langsung buka VariantModal dengan data yang sudah ada
+  const handleItemClick = (item: MenuItem) => {
     setVariantItem(item);
-    const { data } = await supabase
-      .from('menu_variants')
-      .select('*')
-      .eq('menu_item_id', item.id);
-    setVariantGroups((data || []) as VariantGroup[]);
-    setLoadingVariants(false);
+    setVariantGroups(item.variants || []);
   };
+
 
   // Konfirmasi dari VariantModal → tambah ke keranjang
   const handleVariantConfirm = (selections: SelectedVariant[], qty: number, notes: string) => {
@@ -303,7 +302,7 @@ export default function PosPage() {
       </div>
 
       {/* Modal Varian */}
-      {variantItem && !loadingVariants && (
+      {variantItem && (
         <VariantModal
           item={variantItem}
           variants={variantGroups}
@@ -311,14 +310,7 @@ export default function PosPage() {
           onClose={() => setVariantItem(null)}
         />
       )}
-      {loadingVariants && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-2xl p-5 flex items-center gap-3 shadow-xl">
-            <Loader2 className="animate-spin text-amber-500" size={20} />
-            <span className="text-sm font-medium">Memuat varian...</span>
-          </div>
-        </div>
-      )}
+
 
       {/* Modal QRIS */}
       {showQrisModal && (
