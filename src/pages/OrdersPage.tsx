@@ -126,8 +126,8 @@ export default function OrdersPage() {
                   key={p}
                   onClick={() => setFilterPeriode(p)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${filterPeriode === p
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-200'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-200'
                     }`}
                 >
                   {labelPeriode[p]}
@@ -145,8 +145,8 @@ export default function OrdersPage() {
                   key={m}
                   onClick={() => setFilterMetode(m)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors uppercase ${filterMetode === m
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-200'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-200'
                     }`}
                 >
                   {m === 'semua' ? 'Semua' : m.toUpperCase()}
@@ -171,7 +171,8 @@ export default function OrdersPage() {
 
       {/* --- TABEL ORDERS --- */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="grid grid-cols-5 bg-gray-50 p-4 border-b border-gray-100 font-medium text-sm text-gray-500">
+        {/* Header tabel — hanya desktop */}
+        <div className="hidden md:grid grid-cols-5 bg-gray-50 p-4 border-b border-gray-100 font-medium text-sm text-gray-500">
           <div className="col-span-2">ORDER ID</div>
           <div>TANGGAL</div>
           <div>TOTAL</div>
@@ -186,50 +187,46 @@ export default function OrdersPage() {
               <p className="font-medium">Tidak ada transaksi.</p>
               <p className="text-xs mt-1">Coba ubah filter yang dipilih.</p>
             </div>
-          ) : (
-            filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="grid grid-cols-5 p-4 items-center hover:bg-gray-50 transition-colors text-sm"
-              >
+          ) : filteredOrders.map((order) => (
+            <div key={order.id}>
+              {/* ── MOBILE CARD ── */}
+              <div className="md:hidden p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="font-mono text-xs text-gray-600 font-semibold">#{order.id.slice(0, 8)}...</span>
+                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${order.payment_type === 'qris' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                      }`}>{order.payment_type}</span>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${order.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>{order.status}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-400">
+                    {new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="font-bold text-slate-900 text-sm">Rp {order.total_amount.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+
+              {/* ── DESKTOP ROW ── */}
+              <div className="hidden md:grid grid-cols-5 p-4 items-center hover:bg-gray-50 transition-colors text-sm">
                 <div className="col-span-2 flex items-center gap-2">
-                  <span className="font-mono text-gray-600 truncate pr-4" title={order.id}>
-                    #{order.id.slice(0, 8)}...
-                  </span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${order.payment_type === 'qris'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600'
-                      }`}
-                  >
-                    {order.payment_type}
-                  </span>
+                  <span className="font-mono text-gray-600 truncate pr-4" title={order.id}>#{order.id.slice(0, 8)}...</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${order.payment_type === 'qris' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                    }`}>{order.payment_type}</span>
                 </div>
                 <div className="text-gray-600 flex items-center gap-2">
                   <Calendar size={14} />
-                  {new Date(order.created_at).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  {new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </div>
-                <div className="font-bold text-slate-900">
-                  Rp {order.total_amount.toLocaleString('id-ID')}
-                </div>
+                <div className="font-bold text-slate-900">Rp {order.total_amount.toLocaleString('id-ID')}</div>
                 <div className="text-right">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${order.status === 'completed'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                  >
-                    {order.status.toUpperCase()}
-                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>{order.status.toUpperCase()}</span>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

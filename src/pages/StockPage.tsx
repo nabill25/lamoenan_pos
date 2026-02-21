@@ -163,29 +163,29 @@ export default function StockPage() {
       </div>
 
       {/* Kartu Ringkasan */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-          <div className="text-3xl font-bold text-green-700">{aman}</div>
-          <div className="text-sm text-green-600 mt-1 flex items-center gap-1">
-            <CheckCircle2 size={14} /> Stok Aman
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="bg-green-50 border border-green-100 rounded-xl p-3 md:p-4">
+          <div className="text-2xl md:text-3xl font-bold text-green-700">{aman}</div>
+          <div className="text-xs md:text-sm text-green-600 mt-1 flex items-center gap-1">
+            <CheckCircle2 size={13} /> Stok Aman
           </div>
         </div>
-        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-          <div className="text-3xl font-bold text-amber-700">{hampirHabis}</div>
-          <div className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-            <TrendingDown size={14} /> Hampir Habis
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 md:p-4">
+          <div className="text-2xl md:text-3xl font-bold text-amber-700">{hampirHabis}</div>
+          <div className="text-xs md:text-sm text-amber-600 mt-1 flex items-center gap-1">
+            <TrendingDown size={13} /> Hampir Habis
           </div>
         </div>
-        <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-          <div className="text-3xl font-bold text-red-700">{habis}</div>
-          <div className="text-sm text-red-600 mt-1 flex items-center gap-1">
-            <XCircle size={14} /> Tidak Bisa Dibuat
+        <div className="bg-red-50 border border-red-100 rounded-xl p-3 md:p-4">
+          <div className="text-2xl md:text-3xl font-bold text-red-700">{habis}</div>
+          <div className="text-xs md:text-sm text-red-600 mt-1 flex items-center gap-1">
+            <XCircle size={13} /> Tidak Bisa
           </div>
         </div>
-        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-          <div className="text-3xl font-bold text-gray-500">{tanpaResep}</div>
-          <div className="text-sm text-gray-400 mt-1 flex items-center gap-1">
-            <UtensilsCrossed size={14} /> Tanpa Resep
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 md:p-4">
+          <div className="text-2xl md:text-3xl font-bold text-gray-500">{tanpaResep}</div>
+          <div className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-1">
+            <UtensilsCrossed size={13} /> Tanpa Resep
           </div>
         </div>
       </div>
@@ -211,8 +211,8 @@ export default function StockPage() {
           )}
         </div>
 
-        {/* Header tabel */}
-        <div className="grid grid-cols-12 bg-gray-50 px-5 py-3 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">
+        {/* Header tabel — hanya desktop */}
+        <div className="hidden md:grid grid-cols-12 bg-gray-50 px-5 py-3 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">
           <div className="col-span-4">Nama Menu</div>
           <div className="col-span-2">Kategori</div>
           <div className="col-span-2 text-center">Estimasi Porsi</div>
@@ -220,7 +220,7 @@ export default function StockPage() {
           <div className="col-span-2">Bahan Pembatas</div>
         </div>
 
-        {/* Isi tabel */}
+        {/* Isi */}
         <div className="divide-y divide-gray-50">
           {loading ? (
             <div className="py-12 text-center text-gray-400">
@@ -229,13 +229,37 @@ export default function StockPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-gray-400">Tidak ada menu ditemukan.</div>
-          ) : (
-            filtered.map(item => (
-              <div
-                key={item.id}
-                className={`grid grid-cols-12 px-5 py-4 items-center text-sm hover:bg-gray-50 transition-colors ${item.status === 'habis' ? 'bg-red-50/40' : ''}`}
-              >
-                {/* Nama */}
+          ) : filtered.map(item => (
+            <div key={item.id}>
+              {/* ── MOBILE CARD ── */}
+              <div className={`md:hidden p-4 flex items-start gap-3 ${item.status === 'habis' ? 'bg-red-50/40' : ''}`}>
+                <div className={`mt-1 w-1.5 h-12 rounded-full shrink-0 ${item.status === 'habis' ? 'bg-red-400' : item.status === 'hampir_habis' ? 'bg-amber-400' : 'bg-green-400'}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
+                      <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs mt-0.5 inline-block">{item.category}</span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`text-xl font-black ${item.status === 'habis' ? 'text-red-600' : item.status === 'hampir_habis' ? 'text-amber-600' : 'text-green-600'}`}>
+                        {item.hasResep ? item.porsiEstimasi : item.manualStock}
+                      </div>
+                      <div className="text-xs text-gray-400">{item.hasResep ? 'porsi' : 'pcs'}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <StatusBadge status={item.hasResep ? item.status : 'no_recipe'} />
+                    {item.hasResep && item.bottleneck ? (
+                      <span className="text-xs text-gray-400 truncate max-w-[150px]">{item.bottleneck}</span>
+                    ) : !item.hasResep ? (
+                      <span className="text-xs text-blue-500 cursor-pointer" onClick={() => window.location.href = '/inventory'}>Atur resep →</span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── DESKTOP ROW ── */}
+              <div className={`hidden md:grid grid-cols-12 px-5 py-4 items-center text-sm hover:bg-gray-50 transition-colors ${item.status === 'habis' ? 'bg-red-50/40' : ''}`}>
                 <div className="col-span-4 flex items-center gap-3">
                   <div className={`w-2 h-8 rounded-full ${item.status === 'habis' ? 'bg-red-400' : item.status === 'hampir_habis' ? 'bg-amber-400' : 'bg-green-400'}`} />
                   <div>
@@ -247,21 +271,13 @@ export default function StockPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Kategori */}
                 <div className="col-span-2">
-                  <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">
-                    {item.category}
-                  </span>
+                  <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{item.category}</span>
                 </div>
-
-                {/* Estimasi Porsi — angka besar di tengah */}
                 <div className="col-span-2 text-center">
                   {item.hasResep ? (
                     <div>
-                      <span className={`text-2xl font-black ${item.status === 'habis' ? 'text-red-600' : item.status === 'hampir_habis' ? 'text-amber-600' : 'text-green-600'}`}>
-                        {item.porsiEstimasi}
-                      </span>
+                      <span className={`text-2xl font-black ${item.status === 'habis' ? 'text-red-600' : item.status === 'hampir_habis' ? 'text-amber-600' : 'text-green-600'}`}>{item.porsiEstimasi}</span>
                       <span className="text-xs text-gray-400 ml-1">porsi</span>
                     </div>
                   ) : (
@@ -271,13 +287,9 @@ export default function StockPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Status badge */}
                 <div className="col-span-2 text-center">
                   <StatusBadge status={item.hasResep ? item.status : 'no_recipe'} />
                 </div>
-
-                {/* Bahan Pembatas (bottleneck) */}
                 <div className="col-span-2 text-xs">
                   {item.hasResep && item.bottleneck ? (
                     <div className={`flex items-start gap-1 ${item.status === 'habis' ? 'text-red-600' : item.status === 'hampir_habis' ? 'text-amber-600' : 'text-gray-400'}`}>
@@ -287,29 +299,17 @@ export default function StockPage() {
                   ) : item.hasResep ? (
                     <span className="text-gray-300">—</span>
                   ) : (
-                    <span className="text-xs text-blue-500 cursor-pointer hover:underline"
-                      onClick={() => {
-                        // Arahkan ke tab Resep Menu di Inventory
-                        window.location.href = '/inventory';
-                      }}
-                    >
-                      Atur resep →
-                    </span>
+                    <span className="text-xs text-blue-500 cursor-pointer hover:underline" onClick={() => window.location.href = '/inventory'}>Atur resep →</span>
                   )}
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
 
         {/* Footer info */}
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
-          <span>
-            💡 Prediksi dihitung dari: <strong>Min(stok bahan ÷ qty per porsi)</strong> untuk setiap bahan dalam resep.
-          </span>
-          <span>
-            Menu tanpa resep: gunakan <a href="/inventory" className="text-amber-600 hover:underline font-medium">Bahan Baku → Resep Menu</a> untuk mengatur.
-          </span>
+        <div className="px-4 md:px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
+          💡 <strong>Min(stok ÷ qty per porsi)</strong> · Tanpa resep: <a href="/inventory" className="text-amber-600 hover:underline">Bahan Baku → Resep Menu</a>
         </div>
       </div>
     </div>
