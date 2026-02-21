@@ -4,7 +4,8 @@ import { useCartStore } from '../store/cartStore';
 import { Search, Plus, Minus, Loader2, QrCode, X, Banknote, Printer, UserPlus, ShoppingCart, ChevronDown, MapPin, ChevronUp } from 'lucide-react';
 import { Receipt } from '../components/Receipt';
 import { useReactToPrint } from 'react-to-print';
-import VariantModal, { VariantGroup, SelectedVariant } from '../components/VariantModal';
+import VariantModal from '../components/VariantModal';
+import type { VariantGroup, SelectedVariant } from '../components/VariantModal';
 
 interface MenuItem {
   id: string;
