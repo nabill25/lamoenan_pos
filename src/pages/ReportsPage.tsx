@@ -18,6 +18,7 @@ export default function ReportsPage() {
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [itemSales, setItemSales] = useState<any[]>([]);
+  const [itemHPP, setItemHPP] = useState<any[]>([]);
   const [promoUsage, setPromoUsage] = useState<any[]>([]);
   const [summary, setSummary] = useState({
     totalRevenue: 0,
@@ -137,6 +138,28 @@ export default function ReportsPage() {
       .sort((a, b) => b.quantity - a.quantity);
     setItemSales(sortedSales);
 
+    // HPP Analysis per menu item
+    const mapHPP: Record<string, { qty: number; revenue: number; cost: number }> = {};
+    orders.forEach((order) => {
+      order.order_items?.forEach((item: any) => {
+        if (!mapHPP[item.name]) mapHPP[item.name] = { qty: 0, revenue: 0, cost: 0 };
+        mapHPP[item.name].qty += item.quantity;
+        mapHPP[item.name].revenue += item.price * item.quantity;
+        mapHPP[item.name].cost += (item.cost || 0) * item.quantity;
+      });
+    });
+    const sortedHPP = Object.entries(mapHPP)
+      .map(([name, val]) => ({
+        name,
+        qty: val.qty,
+        revenue: val.revenue,
+        cost: val.cost,
+        profit: val.revenue - val.cost,
+        margin: val.revenue > 0 ? ((val.revenue - val.cost) / val.revenue * 100) : 0,
+      }))
+      .sort((a, b) => b.profit - a.profit);
+    setItemHPP(sortedHPP);
+
     // Aggregasi penggunaan promo
     const mapPromo: Record<string, { count: number; totalDiscount: number }> = {};
     orders.forEach((order) => {
@@ -252,7 +275,7 @@ export default function ReportsPage() {
               </h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 Margin: {summary.marginPersen.toFixed(1)}%
-                {totalCostIsZero(summary) && (
+                {summary.grossProfit === summary.totalRevenue && summary.totalRevenue > 0 && (
                   <span className="text-amber-500 ml-1">(cost belum diisi)</span>
                 )}
               </p>
@@ -463,11 +486,51 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+
+      {/* — TABEL HPP PER MENU — */}
+      {itemHPP.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+          <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+            <h3 className="text-base font-bold text-gray-800">📊 Analisa HPP per Menu (Laba/Rugi)</h3>
+            <span className="text-xs text-gray-400">{LABEL_FILTER[filterType]}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                  <th className="px-5 py-3 text-left">Menu</th>
+                  <th className="px-5 py-3 text-right">Qty</th>
+                  <th className="px-5 py-3 text-right">Pendapatan</th>
+                  <th className="px-5 py-3 text-right">HPP (Cost)</th>
+                  <th className="px-5 py-3 text-right">Laba Kotor</th>
+                  <th className="px-5 py-3 text-right">Margin</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {itemHPP.map((item) => (
+                  <tr key={item.name} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 font-medium text-gray-900">{item.name}</td>
+                    <td className="px-5 py-3 text-right text-gray-600">{item.qty}</td>
+                    <td className="px-5 py-3 text-right text-gray-700">Rp {item.revenue.toLocaleString('id-ID')}</td>
+                    <td className="px-5 py-3 text-right text-red-500">Rp {item.cost.toLocaleString('id-ID')}</td>
+                    <td className={`px-5 py-3 text-right font-bold ${item.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      Rp {item.profit.toLocaleString('id-ID')}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${item.margin >= 60 ? 'bg-green-100 text-green-700' :
+                        item.margin >= 30 ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-600'
+                        }`}>
+                        {item.margin.toFixed(1)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-// Helper: deteksi jika semua cost = 0 (belum diisi HPP)
-function totalCostIsZero(summary: { grossProfit: number; totalRevenue: number }) {
-  return summary.grossProfit === summary.totalRevenue && summary.totalRevenue > 0;
 }

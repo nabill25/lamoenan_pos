@@ -15,6 +15,7 @@ import MembersPage from './pages/MembersPage';
 import MenuPage from './pages/MenuPage';
 import TablesPage from './pages/TablesPage';
 import KitchenPage from './pages/KitchenPage';
+import ReservationsPage from './pages/ReservationsPage';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
               <Route path="reports" element={<ReportsPage />} />
               <Route path="tables" element={<TablesPage />} />
               <Route path="kitchen" element={<KitchenPage />} />
+              <Route path="reservations" element={<ReservationsPage />} />
 
               {/* Owner & Headbar */}
               <Route element={<RoleGuard allowedRoles={['owner', 'headbar']} />}>
