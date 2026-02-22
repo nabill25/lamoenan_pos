@@ -18,12 +18,14 @@ export default function ReportsPage() {
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [itemSales, setItemSales] = useState<any[]>([]);
+  const [promoUsage, setPromoUsage] = useState<any[]>([]);
   const [summary, setSummary] = useState({
     totalRevenue: 0,
     totalOrders: 0,
     avgOrder: 0,
     grossProfit: 0,
     marginPersen: 0,
+    totalDiscounts: 0,
   });
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<TipeFilter>('daily');
@@ -108,7 +110,9 @@ export default function ReportsPage() {
     const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     let totalCost = 0;
+    let totalDiscounts = 0;
     orders.forEach((order) => {
+      totalDiscounts += order.discount_amount || 0;
       order.order_items?.forEach((item: any) => {
         totalCost += (item.cost || 0) * item.quantity;
       });
@@ -117,7 +121,7 @@ export default function ReportsPage() {
     // Persentase margin laba kotor: (labaKotor / pendapatan) * 100
     const marginPersen = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
-    setSummary({ totalRevenue, totalOrders, avgOrder, grossProfit, marginPersen });
+    setSummary({ totalRevenue, totalOrders, avgOrder, grossProfit, marginPersen, totalDiscounts });
 
     // Aggregasi penjualan per nama menu
     const mapMenu: Record<string, { quantity: number; total: number }> = {};
@@ -132,6 +136,20 @@ export default function ReportsPage() {
       .map(([name, val]) => ({ name, ...val }))
       .sort((a, b) => b.quantity - a.quantity);
     setItemSales(sortedSales);
+
+    // Aggregasi penggunaan promo
+    const mapPromo: Record<string, { count: number; totalDiscount: number }> = {};
+    orders.forEach((order) => {
+      if (order.promo_code) {
+        if (!mapPromo[order.promo_code]) mapPromo[order.promo_code] = { count: 0, totalDiscount: 0 };
+        mapPromo[order.promo_code].count += 1;
+        mapPromo[order.promo_code].totalDiscount += order.discount_amount || 0;
+      }
+    });
+    const sortedPromos = Object.entries(mapPromo)
+      .map(([code, val]) => ({ code, ...val }))
+      .sort((a, b) => b.count - a.count);
+    setPromoUsage(sortedPromos);
 
     // Olah data untuk grafik bar
     // Jika filter harian, group by jam. Jika lainnya, group by tanggal.
@@ -269,6 +287,21 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
+
+        {/* Total Diskon */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-100 text-amber-600 rounded-lg flex-shrink-0">
+              <DollarSign size={22} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-gray-500 font-medium uppercase">Total Diskon / Promo</p>
+              <h3 className="text-xl font-bold text-gray-900 truncate">
+                Rp {summary.totalDiscounts.toLocaleString('id-ID')}
+              </h3>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* — GRAFIK PENDAPATAN — */}
@@ -386,6 +419,46 @@ export default function ReportsPage() {
                   <td className="px-5 py-3 text-right text-gray-500">100%</td>
                 </tr>
               </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* — TABEL PENGGUNAAN PROMO — */}
+      {promoUsage.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+          <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+            <h3 className="text-base font-bold text-gray-800">
+              Rincian Penggunaan Promo / Voucher
+            </h3>
+            <span className="text-xs text-gray-400">{LABEL_FILTER[filterType]} · {promoUsage.length} promo</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                  <th className="px-5 py-3 text-left">#</th>
+                  <th className="px-5 py-3 text-left">Kode Promo</th>
+                  <th className="px-5 py-3 text-right">Digunakan (Kali)</th>
+                  <th className="px-5 py-3 text-right">Total Diskon Diberikan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {promoUsage.map((item, i) => (
+                  <tr key={item.code} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-5 py-3 font-bold text-amber-600">
+                      {item.code}
+                    </td>
+                    <td className="px-5 py-3 text-right font-medium text-slate-700">
+                      {item.count}x
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-700 font-medium">
+                      Rp {item.totalDiscount.toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>

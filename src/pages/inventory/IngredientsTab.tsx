@@ -25,6 +25,7 @@ export default function IngredientsTab() {
         name: '',
         unit: 'pcs',
         min_stock: 0,
+        cost_per_unit: 0,
         category_id: '',
     });
 
@@ -54,6 +55,7 @@ export default function IngredientsTab() {
             name: formData.name,
             unit: formData.unit,
             min_stock: formData.min_stock,
+            cost_per_unit: formData.cost_per_unit,
             category_id: formData.category_id || null,
         };
 
@@ -163,7 +165,7 @@ export default function IngredientsTab() {
                 <button
                     onClick={() => {
                         setCurrentIngredient(null);
-                        setFormData({ name: '', unit: 'pcs', min_stock: 0, category_id: '' });
+                        setFormData({ name: '', unit: 'pcs', min_stock: 0, cost_per_unit: 0, category_id: '' });
                         setIsModalOpen(true);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
@@ -181,6 +183,7 @@ export default function IngredientsTab() {
                             <th className="px-6 py-3">Nama Bahan</th>
                             <th className="px-6 py-3">Kategori</th>
                             <th className="px-6 py-3">Stok Saat Ini</th>
+                            <th className="px-6 py-3">Hrg per Unit</th>
                             <th className="px-6 py-3 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -212,6 +215,9 @@ export default function IngredientsTab() {
                                             {item.current_stock} <span className="text-gray-500 font-normal text-xs">{item.unit}</span>
                                         </div>
                                     </td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        Rp {item.cost_per_unit?.toLocaleString('id-ID') || 0}
+                                    </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button
@@ -228,6 +234,7 @@ export default function IngredientsTab() {
                                                         name: item.name,
                                                         unit: item.unit,
                                                         min_stock: item.min_stock,
+                                                        cost_per_unit: item.cost_per_unit || 0,
                                                         category_id: item.category_id || '',
                                                     });
                                                     setIsModalOpen(true);
@@ -292,18 +299,29 @@ export default function IngredientsTab() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                                <select
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                    value={formData.category_id}
-                                    onChange={e => setFormData({ ...formData, category_id: e.target.value })}
-                                >
-                                    <option value="">Pilih Kategori</option>
-                                    {categories.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hrg Pokok/Unit (Rp)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                        value={formData.cost_per_unit}
+                                        onChange={e => setFormData({ ...formData, cost_per_unit: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                    <select
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                        value={formData.category_id}
+                                        onChange={e => setFormData({ ...formData, category_id: e.target.value })}
+                                    >
+                                        <option value="">Pilih Kategori</option>
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

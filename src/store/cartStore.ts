@@ -12,21 +12,30 @@ export interface CartItem {
   addons: { name: string; price: number }[];
 }
 
-// Interface State yang diperluas untuk Member & Diskon
 interface CartState {
   items: CartItem[];
-  discount: number; // Persentase diskon (0 - 100)
+  discount: number; // For percentage or fixed value
+  discountType: 'percentage' | 'fixed';
+  taxRate: number; // e.g. 0.11 for 11%
+  serviceChargeRate: number; // e.g. 0.05 for 5%
+  promoCode: string | null;
+  redeemPoints: number; // Jumlah poin yang akan ditukar (1 poin = Rp1 misal)
   selectedMember: any | null; // Data member dari database
   addToCart: (item: Omit<CartItem, 'tempId'>) => void;
   removeFromCart: (tempId: string) => void;
   updateQuantity: (tempId: string, quantity: number) => void;
-  setDiscount: (value: number) => void;
+  setDiscount: (value: number, type?: 'percentage' | 'fixed') => void;
+  setPromoCode: (code: string | null) => void;
+  setRedeemPoints: (points: number) => void;
+  setStoreSettings: (taxRate: number, serviceChargeRate: number) => void;
   setMember: (member: any | null) => void;
   clearCart: () => void;
   getTotals: () => {
     subtotal: number;
     discountAmount: number;
-    tax: number;
+    pointsDiscount: number;
+    serviceChargeAmount: number;
+    taxAmount: number;
     total: number
   };
 }
@@ -34,6 +43,11 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   discount: 0,
+  discountType: 'percentage',
+  taxRate: 0.11, // default 11%
+  serviceChargeRate: 0, // default 0%
+  promoCode: null,
+  redeemPoints: 0,
   selectedMember: null,
 
   addToCart: (newItem) => set((state) => {
@@ -50,17 +64,25 @@ export const useCartStore = create<CartState>((set, get) => ({
   })),
 
   // Fungsi baru untuk mengatur diskon & member
-  setDiscount: (value) => set({ discount: value }),
+  setDiscount: (value, type = 'percentage') => set({ discount: value, discountType: type }),
+  setPromoCode: (code) => set({ promoCode: code }),
+  setRedeemPoints: (points) => set({ redeemPoints: points }),
+  setStoreSettings: (tax, sc) => set({ taxRate: tax, serviceChargeRate: sc }),
   setMember: (member) => set({ selectedMember: member }),
 
   clearCart: () => set({
     items: [],
     discount: 0,
+    discountType: 'percentage',
+    taxRate: 0.11,
+    serviceChargeRate: 0,
+    promoCode: null,
+    redeemPoints: 0,
     selectedMember: null
   }),
 
   getTotals: () => {
-    const { items, discount } = get();
+    const { items } = get();
 
     // 1. Hitung Subtotal (Harga asli + varian + addons)
     const subtotal = items.reduce((sum, item) => {
@@ -70,20 +92,43 @@ export const useCartStore = create<CartState>((set, get) => ({
       return sum + (itemPrice * item.quantity);
     }, 0);
 
-    // 2. Hitung Nominal Diskon (Berdasarkan persentase dari subtotal)
-    const discountAmount = (subtotal * discount) / 100;
+    // 2. Hitung Nominal Diskon (Persentase atau Fixed)
+    let discountAmount = 0;
+    if (get().discountType === 'percentage') {
+      const calcDiscount = (subtotal * get().discount) / 100;
+      // We don't have max logic in this simple function yet, but can be added later
+      discountAmount = calcDiscount;
+    } else {
+      discountAmount = get().discount;
+    }
 
-    // 3. Harga setelah diskon (Dasar pengenaan pajak)
-    const afterDiscount = subtotal - discountAmount;
+    // Ensure discount amount doesn't exceed subtotal
+    if (discountAmount > subtotal) discountAmount = subtotal;
 
-    // 4. Pajak 11% dari harga setelah diskon
-    const tax = afterDiscount * 0.11;
+    // 2.5 Hitung Diskon Poin (1 poin = Rp1)
+    let pointsDiscount = get().redeemPoints;
+    if (pointsDiscount > (subtotal - discountAmount)) {
+      // Maksimal poin yang bisa diredeem tidak boleh melebihi sisa tagihan
+      pointsDiscount = subtotal - discountAmount;
+    }
+
+    //  Harga setelah diskon (Dasar pengenaan SC & Pajak)
+    const afterDiscount = subtotal - discountAmount - pointsDiscount;
+
+    //  Hitung Service Charge
+    const serviceChargeAmount = afterDiscount * get().serviceChargeRate;
+
+    //  Hitung Pajak (Berdasarkan Subtotal - Diskon - Promo + Service Charge)
+    const dasarPengenaanPajak = afterDiscount + serviceChargeAmount;
+    const taxAmount = dasarPengenaanPajak * get().taxRate;
 
     return {
       subtotal,
       discountAmount,
-      tax,
-      total: afterDiscount + tax
+      pointsDiscount,
+      serviceChargeAmount,
+      taxAmount,
+      total: afterDiscount + serviceChargeAmount + taxAmount
     };
   }
 }));

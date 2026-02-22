@@ -26,17 +26,27 @@ interface Table {
   status: string;
 }
 
+interface PaymentMethod {
+  id: string;
+  name: string;
+  type: string;
+}
+
 export default function PosPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qris'>('cash');
+
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(null);
   const [showQrisModal, setShowQrisModal] = useState(false);
   const [memberPhone, setMemberPhone] = useState('');
   const [receiptData, setReceiptData] = useState<any>(null);
   const [showCartMobile, setShowCartMobile] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promoError, setPromoError] = useState('');
 
   // State Varian — langsung dari item.variants (tidak perlu query tambahan)
   const [variantItem, setVariantItem] = useState<MenuItem | null>(null);
@@ -53,7 +63,8 @@ export default function PosPage() {
   const {
     items, addToCart, removeFromCart, updateQuantity,
     getTotals, clearCart, selectedMember, setMember,
-    discount, setDiscount
+    setDiscount, promoCode, setPromoCode, setStoreSettings,
+    redeemPoints, setRedeemPoints
   } = useCartStore();
 
   const totals = getTotals();
@@ -67,7 +78,24 @@ export default function PosPage() {
   useEffect(() => {
     fetchMenu();
     fetchTables();
+    fetchStoreSettings();
+    fetchPaymentMethods();
   }, []);
+
+  const fetchPaymentMethods = async () => {
+    const { data } = await supabase.from('payment_methods').select('*').eq('is_active', true).order('sort_order', { ascending: true });
+    if (data) {
+      setPaymentMethods(data as PaymentMethod[]);
+      if (data.length > 0) setSelectedPayment(data[0]);
+    }
+  };
+
+  const fetchStoreSettings = async () => {
+    const { data } = await supabase.from('store_settings').select('*').single();
+    if (data) {
+      setStoreSettings(data.tax_rate, data.service_charge_rate);
+    }
+  };
 
   const fetchMenu = async () => {
     const { data } = await supabase
@@ -130,22 +158,73 @@ export default function PosPage() {
     }
   };
 
-  const handlePaymentClick = () => {
-    if (items.length === 0) return;
-    if (paymentMethod === 'qris') setShowQrisModal(true);
-    else processCheckout('cash');
+  const checkPromoCode = async () => {
+    setPromoError('');
+    if (!promoInput) {
+      setPromoCode(null);
+      setDiscount(0, 'percentage');
+      return;
+    }
+
+    const { data: promo, error } = await supabase
+      .from('promos')
+      .select('*')
+      .eq('code', promoInput.toUpperCase())
+      .eq('is_active', true)
+      .single();
+
+    if (error || !promo) {
+      setPromoError('Promo tidak ditemukan atau tidak aktif');
+      setPromoCode(null);
+      setDiscount(0, 'percentage');
+      return;
+    }
+
+    // Check dates
+    const now = new Date();
+    if (promo.start_date && new Date(promo.start_date) > now) {
+      setPromoError('Promo belum berlaku');
+      return;
+    }
+    if (promo.end_date && new Date(promo.end_date) < now) {
+      setPromoError('Promo sudah kadaluarsa');
+      return;
+    }
+
+    // Check Min Spend
+    const tempSubtotal = totals.subtotal;
+    if (promo.min_order_amount && tempSubtotal < promo.min_order_amount) {
+      setPromoError(`Min. belanja Rp ${promo.min_order_amount.toLocaleString('id-ID')}`);
+      return;
+    }
+
+    // Apply promo
+    setPromoCode(promo.code);
+    setDiscount(promo.discount_value, promo.discount_type);
   };
 
-  const processCheckout = async (method: 'cash' | 'qris') => {
+  const handlePaymentClick = () => {
+    if (items.length === 0 || !selectedPayment) return;
+    if (selectedPayment.type === 'qris') setShowQrisModal(true);
+    else processCheckout(selectedPayment.name);
+  };
+
+  const processCheckout = async (methodName: string) => {
     setProcessing(true);
     try {
+      const earnedPoints = Math.floor(totals.total / 10000); // 1 point per Rp 10.000 spent
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           total_amount: totals.total,
           discount_amount: totals.discountAmount,
+          tax_amount: totals.taxAmount,
+          service_charge_amount: totals.serviceChargeAmount,
+          points_redeemed: totals.pointsDiscount,
           member_id: selectedMember?.id,
-          payment_type: method,
+          payment_type: methodName,
+          promo_code: promoCode,
           status: 'completed',
           table_id: selectedTable?.id || null,
           table_name: selectedTable?.name || 'Take Away',
@@ -189,10 +268,50 @@ export default function PosPage() {
         }
       } catch (e) { console.error('Auto-deduct gagal:', e); }
 
+      // Proses Poin Loyalti
+      if (selectedMember) {
+        try {
+          // Jika ada poin yang diredeem
+          if (totals.pointsDiscount > 0) {
+            await supabase.from('point_histories').insert({
+              member_id: selectedMember.id,
+              order_id: orderData.id,
+              type: 'redeemed',
+              points_amount: -totals.pointsDiscount,
+              notes: `Redeem untuk transaksi #${orderData.id.slice(0, 8)}`
+            });
+          }
+          // Tambahkan poin yang didapat
+          if (earnedPoints > 0) {
+            await supabase.from('point_histories').insert({
+              member_id: selectedMember.id,
+              order_id: orderData.id,
+              type: 'earned',
+              points_amount: earnedPoints,
+              notes: `Earned dari transaksi #${orderData.id.slice(0, 8)}`
+            });
+          }
+          // Update total poin di tabel members
+          const netPoints = earnedPoints - totals.pointsDiscount;
+          const { data: memberData } = await supabase.from('members').select('points').eq('id', selectedMember.id).single();
+          if (memberData) {
+            const currentPoints = memberData.points || 0;
+            await supabase.from('members').update({ points: currentPoints + netPoints }).eq('id', selectedMember.id);
+          }
+        } catch (e) { console.error('Gagal memproses poin:', e); }
+      }
+
       setReceiptData({
         id: orderData.id, date: new Date().toLocaleString('id-ID'),
-        items: [...items], total: totals.total, discount: totals.discountAmount,
-        paymentMethod: method, cashierName: 'Admin',
+        items: [...items],
+        subtotal: totals.subtotal,
+        discount: totals.discountAmount,
+        pointsDiscount: totals.pointsDiscount,
+        earnedPoints: earnedPoints,
+        taxAmount: totals.taxAmount,
+        serviceChargeAmount: totals.serviceChargeAmount,
+        total: totals.total,
+        paymentMethod: methodName, cashierName: 'Admin',
         memberName: selectedMember?.name, tableName: selectedTable?.name || 'Take Away'
       });
 
@@ -263,27 +382,66 @@ export default function PosPage() {
           <button onClick={searchMember} className="bg-slate-800 text-white text-[10px] px-3 rounded flex items-center gap-1"><UserPlus size={12} /> Cari</button>
         </div>
         {selectedMember && (
-          <div className="flex justify-between items-center text-xs bg-green-50 p-2 rounded border border-green-100">
-            <span className="text-green-700 font-bold">✨ {selectedMember.name}</span>
-            <button onClick={() => { setMember(null); setDiscount(0); }} className="text-red-400 font-bold">X</button>
+          <div className="flex flex-col gap-2 mt-2 bg-green-50 p-2 rounded border border-green-100">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-green-700 font-bold">✨ {selectedMember.name} (Poin: {selectedMember.points || 0})</span>
+              <button
+                onClick={() => {
+                  setMember(null); setDiscount(0, 'percentage'); setPromoCode(null); setPromoInput(''); setRedeemPoints(0);
+                }}
+                className="text-red-400 font-bold"
+              >
+                X
+              </button>
+            </div>
+            {/* Opsi Tukar Poin */}
+            {(selectedMember.points || 0) > 0 && (
+              <div className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  id="usePoints"
+                  checked={redeemPoints > 0}
+                  onChange={(e) => {
+                    setRedeemPoints(e.target.checked ? selectedMember.points : 0);
+                  }}
+                />
+                <label htmlFor="usePoints" className="text-gray-700 cursor-pointer">
+                  Tukar {selectedMember.points} Poin (Diskon Rp {selectedMember.points.toLocaleString('id-ID')})
+                </label>
+              </div>
+            )}
           </div>
         )}
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-gray-500">Diskon (%)</label>
-          <input type="number" className="w-16 p-1 border rounded text-right text-xs" value={discount} onChange={e => setDiscount(Number(e.target.value))} />
+
+        {/* Promo Code Input */}
+        <div className="flex gap-2 pt-1 border-t border-gray-100">
+          <input type="text" placeholder="Kode Promo / Voucher" className="flex-1 text-xs p-2 border rounded outline-none focus:ring-1 focus:ring-amber-400 uppercase" value={promoInput} onChange={e => setPromoInput(e.target.value.toUpperCase())} />
+          <button onClick={checkPromoCode} className="bg-amber-100 text-amber-700 text-[10px] font-bold px-3 rounded flex items-center gap-1 hover:bg-amber-200">Pakai</button>
         </div>
+        {promoError && <p className="text-[10px] text-red-500 font-medium">{promoError}</p>}
+        {promoCode && !promoError && <p className="text-[10px] text-green-600 font-medium">✨ Promo {promoCode} terpasang!</p>}
       </div>
 
       <div className="p-4 bg-gray-50 border-t shrink-0">
         <div className="space-y-1 mb-3 text-xs">
           <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>Rp {totals.subtotal.toLocaleString('id-ID')}</span></div>
           {totals.discountAmount > 0 && <div className="flex justify-between text-red-500"><span>Diskon</span><span>-Rp {totals.discountAmount.toLocaleString('id-ID')}</span></div>}
-          <div className="flex justify-between text-gray-500"><span>Pajak (11%)</span><span>Rp {totals.tax.toLocaleString('id-ID')}</span></div>
+          {totals.pointsDiscount > 0 && <div className="flex justify-between text-amber-600"><span>Tukar Poin</span><span>-Rp {totals.pointsDiscount.toLocaleString('id-ID')}</span></div>}
+          {totals.serviceChargeAmount > 0 && <div className="flex justify-between text-gray-500"><span>Service Charge</span><span>Rp {totals.serviceChargeAmount.toLocaleString('id-ID')}</span></div>}
+          <div className="flex justify-between text-gray-500"><span>Pajak (PB1)</span><span>Rp {totals.taxAmount.toLocaleString('id-ID')}</span></div>
           <div className="flex justify-between font-bold text-base text-slate-900 border-t pt-2 mt-1"><span>Total</span><span>Rp {totals.total.toLocaleString('id-ID')}</span></div>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <button onClick={() => setPaymentMethod('cash')} className={`py-2 px-3 rounded border text-sm flex items-center justify-center gap-1.5 ${paymentMethod === 'cash' ? 'bg-slate-900 text-white' : 'bg-white'}`}><Banknote size={15} /> Cash</button>
-          <button onClick={() => setPaymentMethod('qris')} className={`py-2 px-3 rounded border text-sm flex items-center justify-center gap-1.5 ${paymentMethod === 'qris' ? 'bg-slate-900 text-white' : 'bg-white'}`}><QrCode size={15} /> QRIS</button>
+          {paymentMethods.map(pm => (
+            <button
+              key={pm.id}
+              onClick={() => setSelectedPayment(pm)}
+              className={`py-2 px-3 rounded border text-xs flex items-center justify-center gap-1.5 ${selectedPayment?.id === pm.id ? 'bg-slate-900 text-white' : 'bg-white text-gray-700'}`}
+            >
+              {pm.type.toLowerCase() === 'cash' ? <Banknote size={14} /> : <QrCode size={14} />}
+              {pm.name}
+            </button>
+          ))}
         </div>
         <button onClick={handlePaymentClick} disabled={items.length === 0 || processing} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold flex justify-center gap-2 items-center hover:bg-slate-800 transition disabled:opacity-50">
           {processing ? <Loader2 className="animate-spin" /> : <Printer size={18} />}
@@ -323,7 +481,7 @@ export default function PosPage() {
             <div className="p-6 flex flex-col items-center text-center">
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Lamoenan-${totals.total}`} className="w-48 h-48 mb-4 border p-2 rounded" alt="QR" />
               <h2 className="text-3xl font-bold mb-6">Rp {totals.total.toLocaleString('id-ID')}</h2>
-              <button onClick={() => processCheckout('qris')} disabled={processing} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold flex justify-center gap-2">
+              <button onClick={() => processCheckout(selectedPayment!.name)} disabled={processing} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold flex justify-center gap-2">
                 {processing ? <Loader2 className="animate-spin" /> : "Verifikasi Pembayaran"}
               </button>
             </div>

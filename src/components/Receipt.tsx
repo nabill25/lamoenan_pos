@@ -5,9 +5,17 @@ interface ReceiptProps {
     id: string;
     date: string;
     items: any[];
+    subtotal: number;
+    discount: number;
+    pointsDiscount?: number;
+    earnedPoints?: number;
+    taxAmount: number;
+    serviceChargeAmount: number;
     total: number;
     paymentMethod: string;
     cashierName?: string;
+    memberName?: string;
+    tableName?: string;
   } | null;
 }
 
@@ -45,13 +53,43 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ orderData }, 
       </div>
 
       {/* Totals */}
-      <div className="flex justify-between font-bold text-xs mb-4">
+      <div className="text-right border-t border-black pt-2 mb-2 font-medium">
+        <div className="flex justify-between mb-1">
+          <span>Subtotal</span>
+          <span>Rp {orderData.subtotal.toLocaleString('id-ID')}</span>
+        </div>
+        {orderData.discount > 0 && (
+          <div className="flex justify-between mb-1 text-red-600">
+            <span>Diskon</span>
+            <span>-Rp {orderData.discount.toLocaleString('id-ID')}</span>
+          </div>
+        )}
+        {(orderData.pointsDiscount || 0) > 0 && (
+          <div className="flex justify-between mb-1 text-amber-600">
+            <span>Tukar Poin</span>
+            <span>-Rp {orderData.pointsDiscount?.toLocaleString('id-ID')}</span>
+          </div>
+        )}
+        {orderData.serviceChargeAmount > 0 && (
+          <div className="flex justify-between mb-1">
+            <span>Service Chg</span>
+            <span>Rp {orderData.serviceChargeAmount.toLocaleString('id-ID')}</span>
+          </div>
+        )}
+        <div className="flex justify-between mb-1">
+          <span>Pajak PB1</span>
+          <span>Rp {orderData.taxAmount.toLocaleString('id-ID')}</span>
+        </div>
+      </div>
+      <div className="flex justify-between font-bold text-xs mb-4 border-t border-black pt-1">
         <span>TOTAL</span>
         <span>Rp {orderData.total.toLocaleString('id-ID')}</span>
       </div>
 
-      {/* Footer */}
-      <div className="text-center mt-4">
+      <div className="text-center mt-4 border-t border-black pt-2 border-dashed">
+        {(orderData.earnedPoints || 0) > 0 && (
+          <p className="font-bold text-xs mb-2">🎉 Anda mendapat +{orderData.earnedPoints} Poin!</p>
+        )}
         <p>*** TERIMA KASIH ***</p>
         <p>Silakan datang kembali!</p>
         <p className="mt-2 text-[8px]">Powered by Lamoenan POS</p>
