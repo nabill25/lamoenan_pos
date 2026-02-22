@@ -208,10 +208,10 @@ export default function PosPage() {
     // Fallback jika payment_methods belum ada di DB (SQL belum dirun)
     const method = selectedPayment ?? { id: 'fallback', name: 'CASH', type: 'cash' };
     if (method.type === 'qris') setShowQrisModal(true);
-    else processCheckout(method.name);
+    else processCheckout(method.name, method.type);
   };
 
-  const processCheckout = async (methodName: string) => {
+  const processCheckout = async (methodName: string, methodType: string = 'cash') => {
     setProcessing(true);
     try {
       const earnedPoints = Math.floor(totals.total / 10000); // 1 point per Rp 10.000 spent
@@ -221,7 +221,7 @@ export default function PosPage() {
         total_amount: totals.total,
         discount_amount: totals.discountAmount,
         member_id: selectedMember?.id,
-        payment_type: methodName,
+        payment_type: methodType,
         status: 'completed',
         table_id: selectedTable?.id || null,
         table_name: selectedTable?.name || 'Take Away',
@@ -500,7 +500,7 @@ export default function PosPage() {
             <div className="p-6 flex flex-col items-center text-center">
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Lamoenan-${totals.total}`} className="w-48 h-48 mb-4 border p-2 rounded" alt="QR" />
               <h2 className="text-3xl font-bold mb-6">Rp {totals.total.toLocaleString('id-ID')}</h2>
-              <button onClick={() => processCheckout(selectedPayment!.name)} disabled={processing} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold flex justify-center gap-2">
+              <button onClick={() => { const m = selectedPayment ?? { name: 'QRIS', type: 'qris' }; processCheckout(m.name, m.type); }} disabled={processing} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold flex justify-center gap-2">
                 {processing ? <Loader2 className="animate-spin" /> : "Verifikasi Pembayaran"}
               </button>
             </div>
