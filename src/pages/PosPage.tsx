@@ -204,9 +204,11 @@ export default function PosPage() {
   };
 
   const handlePaymentClick = () => {
-    if (items.length === 0 || !selectedPayment) return;
-    if (selectedPayment.type === 'qris') setShowQrisModal(true);
-    else processCheckout(selectedPayment.name);
+    if (items.length === 0) return;
+    // Fallback jika payment_methods belum ada di DB (SQL belum dirun)
+    const method = selectedPayment ?? { id: 'fallback', name: 'CASH', type: 'cash' };
+    if (method.type === 'qris') setShowQrisModal(true);
+    else processCheckout(method.name);
   };
 
   const processCheckout = async (methodName: string) => {
