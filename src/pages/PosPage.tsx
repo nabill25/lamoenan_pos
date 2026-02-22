@@ -223,6 +223,7 @@ export default function PosPage() {
         member_id: selectedMember?.id,
         payment_type: methodType,
         status: 'completed',
+        kitchen_status: 'pending',
         table_id: selectedTable?.id || null,
         table_name: selectedTable?.name || 'Take Away',
       };

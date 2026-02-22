@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Coffee, ShoppingCart, History,
   Users, UserCheck, LogOut, Package, X, Clipboard, Grid2x2,
-  Clock3, Lock, Unlock
+  Clock3, Lock, Unlock, ChefHat
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.tsx';
@@ -56,6 +56,7 @@ export default function MainLayout() {
     { to: '/members', icon: <UserCheck size={20} />, label: 'Members', roles: ['owner', 'headbar', 'barista'] },
     { to: '/orders', icon: <History size={20} />, label: 'Orders', roles: ['owner', 'headbar', 'barista'] },
     { to: '/reports', icon: <LayoutDashboard size={20} />, label: 'Laporan', roles: ['owner', 'headbar', 'barista'] },
+    { to: '/kitchen', icon: <ChefHat size={20} />, label: 'Kitchen', roles: ['owner', 'headbar', 'barista'] },
     { to: '/menu', icon: <Clipboard size={20} />, label: 'Menu', roles: ['owner', 'headbar'] },
     { to: '/tables', icon: <Grid2x2 size={20} />, label: 'Meja', roles: ['owner', 'headbar', 'barista'] },
     { to: '/stock', icon: <Coffee size={20} />, label: 'Stok', roles: ['owner', 'headbar'] },
