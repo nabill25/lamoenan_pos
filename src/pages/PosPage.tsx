@@ -216,24 +216,41 @@ export default function PosPage() {
     try {
       const earnedPoints = Math.floor(totals.total / 10000); // 1 point per Rp 10.000 spent
 
-      const { data: orderData, error: orderError } = await supabase
+      // Kolom wajib (selalu ada sejak awal)
+      const orderPayload: Record<string, any> = {
+        total_amount: totals.total,
+        discount_amount: totals.discountAmount,
+        member_id: selectedMember?.id,
+        payment_type: methodName,
+        status: 'completed',
+        table_id: selectedTable?.id || null,
+        table_name: selectedTable?.name || 'Take Away',
+      };
+
+      // Kolom opsional Tier 2 — hanya ikut jika bernilai (kolom mungkin belum ada jika SQL belum dirun)
+      // Dibungkus try-catch di bawah agar tidak merusak transaksi
+      const tier2Fields: Record<string, any> = {
+        tax_amount: totals.taxAmount,
+        service_charge_amount: totals.serviceChargeAmount,
+        points_redeemed: totals.pointsDiscount,
+        promo_code: promoCode,
+      };
+
+      // Coba insert dengan kolom tier2 dulu
+      let { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          total_amount: totals.total,
-          discount_amount: totals.discountAmount,
-          tax_amount: totals.taxAmount,
-          service_charge_amount: totals.serviceChargeAmount,
-          points_redeemed: totals.pointsDiscount,
-          member_id: selectedMember?.id,
-          payment_type: methodName,
-          promo_code: promoCode,
-          status: 'completed',
-          table_id: selectedTable?.id || null,
-          table_name: selectedTable?.name || 'Take Away',
-        })
+        .insert({ ...orderPayload, ...tier2Fields })
         .select().single();
 
-      if (orderError || !orderData) throw new Error('Gagal order');
+      // Jika error kolom tidak dikenal (kode 42703), coba lagi tanpa kolom tier2
+      if (orderError && (orderError.code === '42703' || orderError.message?.includes('column'))) {
+        console.warn('Kolom tier2 belum ada, insert ulang tanpa kolom tersebut:', orderError.message);
+        const retry = await supabase.from('orders').insert(orderPayload).select().single();
+        orderData = retry.data;
+        orderError = retry.error;
+      }
+
+      if (orderError || !orderData) throw new Error(`Gagal order: ${orderError?.message || 'Unknown error'}`);
 
       await supabase.from('order_items').insert(items.map(item => ({
         order_id: orderData.id, menu_item_id: item.id,
