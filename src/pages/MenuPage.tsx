@@ -334,7 +334,16 @@ export default function MenuPage() {
             supabase.from('categories').select('id, name').order('name'),
         ]);
         setItems((menus as any) || []);
-        setCategories(cats || []);
+        // Deduplicate categories by name (case-insensitive) to prevent duplicate filter buttons
+        const catRaw = cats || [];
+        const seen = new Set<string>();
+        const uniqueCats = catRaw.filter(c => {
+            const key = c.name.toLowerCase().trim();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        setCategories(uniqueCats);
         setLoading(false);
     };
 

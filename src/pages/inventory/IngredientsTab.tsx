@@ -148,9 +148,9 @@ export default function IngredientsTab() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="relative">
+                    <div className="relative w-full md:w-auto">
                         <select
-                            className="appearance-none pl-10 pr-8 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="appearance-none w-full pl-10 pr-8 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                             value={filterCategory}
                             onChange={(e) => setFilterCategory(e.target.value)}
                         >
@@ -175,82 +175,76 @@ export default function IngredientsTab() {
                 </button>
             </div>
 
-            {/* Table */}
-            <div className="bg-white border border-gray-100 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                        <tr>
-                            <th className="px-6 py-3">Nama Bahan</th>
-                            <th className="px-6 py-3">Kategori</th>
-                            <th className="px-6 py-3">Stok Saat Ini</th>
-                            <th className="px-6 py-3">Hrg per Unit</th>
-                            <th className="px-6 py-3 text-right">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {loading ? (
-                            <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Memuat data...</td></tr>
-                        ) : filteredIngredients.length === 0 ? (
-                            <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Tidak ada data ditemukan.</td></tr>
-                        ) : (
-                            filteredIngredients.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-gray-900">{item.name}</div>
-                                        {item.current_stock <= item.min_stock && (
-                                            <div className="flex items-center gap-1 text-xs text-red-500 font-bold mt-1">
-                                                <AlertCircle size={12} /> Stok Menipis (Min: {item.min_stock})
-                                            </div>
+            {/* Cards — mobile friendly */}
+            <div className="space-y-2">
+                {loading ? (
+                    <div className="p-8 text-center text-gray-400">
+                        <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        Memuat data...
+                    </div>
+                ) : filteredIngredients.length === 0 ? (
+                    <div className="p-8 text-center text-gray-400">Tidak ada data ditemukan.</div>
+                ) : (
+                    filteredIngredients.map((item) => {
+                        const isLow = item.current_stock <= item.min_stock;
+                        return (
+                            <div
+                                key={item.id}
+                                className={`bg-white border rounded-xl px-4 py-3 flex items-center gap-3 ${isLow ? 'border-red-200 bg-red-50/40' : 'border-gray-100'}`}
+                            >
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-semibold text-sm text-gray-900 truncate">{item.name}</span>
+                                        {item.category && (
+                                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">{item.category.name}</span>
                                         )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {item.category ? (
-                                            <span className="bg-gray-100 px-2.5 py-1 rounded text-xs text-gray-600">
-                                                {item.category.name}
+                                        {isLow && (
+                                            <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold">
+                                                <AlertCircle size={10} /> Stok Menipis
                                             </span>
-                                        ) : '-'}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-gray-900">
-                                            {item.current_stock} <span className="text-gray-500 font-normal text-xs">{item.unit}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">
-                                        Rp {item.cost_per_unit?.toLocaleString('id-ID') || 0}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                onClick={() => openAdjustment(item)}
-                                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                                title="Atur Stok"
-                                            >
-                                                <Archive size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setCurrentIngredient(item);
-                                                    setFormData({
-                                                        name: item.name,
-                                                        unit: item.unit,
-                                                        min_stock: item.min_stock,
-                                                        cost_per_unit: item.cost_per_unit || 0,
-                                                        category_id: item.category_id || '',
-                                                    });
-                                                    setIsModalOpen(true);
-                                                }}
-                                                className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded"
-                                                title="Edit"
-                                            >
-                                                <Edit2 size={16} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-3 mt-1 text-xs text-gray-500">
+                                        <span><span className="font-bold text-gray-800">{item.current_stock}</span> {item.unit} tersisa</span>
+                                        <span>·</span>
+                                        <span>Min: {item.min_stock} {item.unit}</span>
+                                        <span>·</span>
+                                        <span>Rp {(item.cost_per_unit || 0).toLocaleString('id-ID')}/unit</span>
+                                    </div>
+                                </div>
+
+                                {/* Action buttons — always visible */}
+                                <div className="flex gap-1.5 shrink-0">
+                                    <button
+                                        onClick={() => openAdjustment(item)}
+                                        className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                        title="Atur Stok"
+                                    >
+                                        <Archive size={15} />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setCurrentIngredient(item);
+                                            setFormData({
+                                                name: item.name,
+                                                unit: item.unit,
+                                                min_stock: item.min_stock,
+                                                cost_per_unit: item.cost_per_unit || 0,
+                                                category_id: item.category_id || '',
+                                            });
+                                            setIsModalOpen(true);
+                                        }}
+                                        className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
+                                        title="Edit"
+                                    >
+                                        <Edit2 size={15} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
 
             {/* Create/Edit Modal */}
